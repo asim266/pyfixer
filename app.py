@@ -48,7 +48,6 @@ PROVIDERS = {
         'models': [
             {'id': 'meta-llama/llama-3.3-70b-instruct:free', 'label': 'Llama 3.3 70B'},
             {'id': 'mistralai/mistral-small-3.1-24b-instruct:free', 'label': 'Mistral Small 3.1 24B'},
-            {'id': 'google/gemma-3-27b-it:free', 'label': 'Gemma 3 27B'},
         ],
     },
     'moonshot': {
@@ -66,7 +65,7 @@ FLASK_PORT = int(os.environ.get('PORT', 5001))
 FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
 MAX_CODE_LENGTH = 50000
 MAX_ERROR_LENGTH = 5000
-DAILY_REQUEST_LIMIT = int(os.environ.get('DAILY_LIMIT', 20))
+DAILY_REQUEST_LIMIT = int(os.environ.get('DAILY_LIMIT', 3))
 SYSTEM_PROMPT = 'You are a Python code debugging expert. When asked to fix code, respond ONLY with the corrected Python code. No explanations, no markdown formatting, no backticks — just the raw working Python code.'
 
 rate_limit_state = {'date': None, 'count': 0}
@@ -119,7 +118,8 @@ def validate_input(code, error_message):
 
 
 def call_llm(base_url, api_key, model_id, prompt):
-    """Call any OpenAI-compatible chat completions endpoint."""
+    """Call any OpenAI-compatible chat completions endpoint with retry on transient 429."""
+    import time
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {api_key}',
@@ -133,9 +133,29 @@ def call_llm(base_url, api_key, model_id, prompt):
         'temperature': 0.3,
         'max_tokens': 4000,
     }
-    response = httpx.post(base_url, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    return response.json()['choices'][0]['message']['content']
+    last_error = None
+    for attempt in range(3):
+        response = httpx.post(base_url, headers=headers, json=payload, timeout=120)
+        # Retry on HTTP 429
+        if response.status_code == 429 and attempt < 2:
+            last_error = 'Provider rate limit — retrying...'
+            time.sleep(3 * (attempt + 1))
+            continue
+        data = response.json()
+        # Handle error in JSON body (some providers return 200 with error)
+        if 'error' in data:
+            err_code = data['error'].get('code', response.status_code)
+            if err_code == 429 and attempt < 2:
+                last_error = data['error'].get('message', 'Rate limited')
+                time.sleep(3 * (attempt + 1))
+                continue
+            raise Exception(data['error'].get('message', 'Unknown API error'))
+        response.raise_for_status()
+        content = data['choices'][0]['message']['content']
+        if not content or not content.strip():
+            raise Exception('Model returned an empty response. Try a different model.')
+        return content
+    raise Exception(last_error or 'Request failed after retries.')
 
 
 def strip_markdown_fences(code):
