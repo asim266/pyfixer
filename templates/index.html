@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyFixer — AI Python Debugger</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <!-- Prism.js theme -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255,255,255,0.03);
+            --bg-card-hover: rgba(255,255,255,0.05);
+            --bg-editor: #0d1117;
+            --border: rgba(255,255,255,0.06);
+            --border-focus: rgba(139,92,246,0.5);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
+            --accent-glow: rgba(139,92,246,0.15);
+            --success: #22c55e;
+            --success-bg: rgba(34,197,94,0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239,68,68,0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245,158,11,0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Ambient background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%;
+            left: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            right: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── NAV ── */
+        .navbar {
+            background: rgba(10,10,15,0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar-inner {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #3b82f6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #fff;
+        }
+        .logo-text {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        .logo-text span { color: var(--accent); }
+        .nav-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px rgba(34,197,94,0.5);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 2rem 2.5rem 4rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            text-align: center;
+            padding: 2.5rem 0 2rem;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--accent-glow);
+            border: 1px solid rgba(139,92,246,0.2);
+            padding: 0.35rem 0.9rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-hover);
+            margin-bottom: 1rem;
+            letter-spacing: 0.3px;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.15;
+            margin-bottom: 0.75rem;
+        }
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 50%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 680px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ── CARDS ── */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            transition: border-color 0.3s ease;
+        }
+        .glass-card:hover { border-color: rgba(255,255,255,0.1); }
+        .card-header-custom {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.25rem;
+        }
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .card-icon.purple { background: var(--accent-glow); color: var(--accent); }
+        .card-icon.red { background: var(--error-bg); color: var(--error); }
+        .card-icon.green { background: var(--success-bg); color: var(--success); }
+        .card-icon.yellow { background: var(--warning-bg); color: var(--warning); }
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* ── EDITOR AREA ── */
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            .editor-grid { grid-template-columns: 1fr 1fr; }
+        }
+        .code-textarea {
+            width: 100%;
+            min-height: 320px;
+            background: var(--bg-editor);
+            color: #e6edf3;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.15rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.65;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .code-textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .code-textarea::placeholder { color: var(--text-muted); }
+        .error-textarea {
+            width: 100%;
+            min-height: 320px;
+            background: var(--bg-editor);
+            color: #fca5a5;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.15rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            line-height: 1.65;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .error-textarea:focus {
+            border-color: rgba(239,68,68,0.5);
+            box-shadow: 0 0 0 3px var(--error-bg);
+        }
+        .error-textarea::placeholder { color: #7f4444; }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+        }
+
+        /* ── BUTTONS ── */
+        .btn-primary-glow {
+            width: 100%;
+            padding: 0.9rem 2rem;
+            background: linear-gradient(135deg, var(--accent), #6d28d9);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary-glow::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+        .btn-primary-glow:hover::before { transform: translateX(100%); }
+        .btn-primary-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(139,92,246,0.35);
+        }
+        .btn-primary-glow:active { transform: translateY(0); }
+        .btn-primary-glow:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-ghost {
+            padding: 0.6rem 1.2rem;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .btn-ghost:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(255,255,255,0.12);
+            color: var(--text-primary);
+        }
+        .btn-ghost.accent { border-color: rgba(139,92,246,0.3); color: var(--accent-hover); }
+        .btn-ghost.accent:hover { background: var(--accent-glow); }
+        .btn-ghost.success { border-color: rgba(34,197,94,0.3); color: var(--success); }
+        .btn-ghost.success:hover { background: var(--success-bg); }
+        .btn-ghost.warning { border-color: rgba(245,158,11,0.3); color: var(--warning); }
+        .btn-ghost.warning:hover { background: var(--warning-bg); }
+
+        /* ── LOADING ── */
+        .loading-overlay {
+            display: none;
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .loading-subtext {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            margin-top: 0.3rem;
+        }
+
+        /* ── ALERTS ── */
+        .alert-custom {
+            display: none;
+            padding: 0.85rem 1.15rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-top: 1.25rem;
+            display: none;
+            align-items: flex-start;
+            gap: 0.6rem;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .alert-error {
+            background: var(--error-bg);
+            border: 1px solid rgba(239,68,68,0.2);
+            color: #fca5a5;
+        }
+        .alert-info {
+            background: rgba(59,130,246,0.1);
+            border: 1px solid rgba(59,130,246,0.2);
+            color: #93c5fd;
+        }
+        .alert-warning {
+            background: var(--warning-bg);
+            border: 1px solid rgba(245,158,11,0.2);
+            color: #fcd34d;
+        }
+
+        /* ── RESULT PANEL ── */
+        .result-panel {
+            display: none;
+            margin-top: 1.5rem;
+            animation: slideIn 0.4s ease;
+        }
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .result-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--success);
+        }
+        .result-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .code-output-wrap {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .code-output-wrap pre {
+            background: var(--bg-editor) !important;
+            margin: 0 !important;
+            padding: 1.25rem !important;
+            border-radius: 12px !important;
+            font-size: 0.84rem !important;
+            line-height: 1.65 !important;
+            overflow-x: auto;
+        }
+        .code-output-wrap code {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        .copy-floating {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.4rem 0.75rem;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 2;
+        }
+        .copy-floating:hover {
+            background: rgba(255,255,255,0.14);
+            color: var(--text-primary);
+        }
+        .copy-floating.copied {
+            background: var(--success-bg);
+            border-color: rgba(34,197,94,0.3);
+            color: var(--success);
+        }
+
+        /* Action bar below result */
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-top: 1rem;
+        }
+
+        /* ── RE-DEBUG PANEL ── */
+        .redebug-panel {
+            display: none;
+            margin-top: 1.25rem;
+            background: rgba(245,158,11,0.04);
+            border: 1px solid rgba(245,158,11,0.15);
+            border-radius: 14px;
+            padding: 1.5rem;
+            animation: slideIn 0.3s ease;
+        }
+        .redebug-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--warning);
+        }
+        .redebug-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        /* ── RATE LIMIT BADGE ── */
+        .rate-badge {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .rate-badge.info {
+            background: rgba(59,130,246,0.08);
+            border: 1px solid rgba(59,130,246,0.15);
+            color: #93c5fd;
+        }
+        .rate-badge.warn {
+            background: var(--warning-bg);
+            border: 1px solid rgba(245,158,11,0.2);
+            color: #fcd34d;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            text-align: center;
+            padding: 2.5rem 1rem 2rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+        .footer-divider {
+            width: 60px;
+            height: 1px;
+            background: var(--border);
+            margin: 0 auto 1rem;
+        }
+        .tech-stack {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .navbar-inner { padding: 0 1rem; }
+            .main-container { padding: 1.5rem 1rem 3rem; }
+            .hero h1 { font-size: 1.8rem; }
+            .hero p { font-size: 0.92rem; }
+            .glass-card { padding: 1.25rem; }
+            .code-textarea, .error-textarea { min-height: 200px; font-size: 0.8rem; }
+            .action-bar { flex-direction: column; }
+            .action-bar .btn-ghost { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a class="logo" href="/">
+                <div class="logo-icon"><i class="fab fa-python"></i></div>
+                <div class="logo-text">Py<span>Fixer</span></div>
+            </a>
+            <div class="nav-badge">
+                <div class="status-dot"></div>
+                <span>Moonshot AI</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-badge">
+                <i class="fas fa-sparkles"></i> AI-Powered Debugging
+            </div>
+            <h1>Fix Python bugs<br><span class="gradient-text">in seconds.</span></h1>
+            <p>Paste your broken code and error message. Our AI analyzes, understands, and returns working Python code instantly.</p>
+        </section>
+
+        <!-- FORM CARD -->
+        <div class="glass-card">
+            <form id="debugForm">
+                <div class="editor-grid">
+                    <!-- Code Input -->
+                    <div>
+                        <div class="card-header-custom">
+                            <div class="card-icon purple"><i class="fas fa-code"></i></div>
+                            <div class="card-title">Your Code</div>
+                        </div>
+                        <textarea
+                            class="code-textarea"
+                            id="pythonCode"
+                            placeholder="# Paste your Python code here..."
+                            spellcheck="false"
+                            required></textarea>
+                        <div class="char-count"><span id="codeCount">0</span> chars</div>
+                    </div>
+
+                    <!-- Error Input -->
+                    <div>
+                        <div class="card-header-custom">
+                            <div class="card-icon red"><i class="fas fa-triangle-exclamation"></i></div>
+                            <div class="card-title">Error / Traceback</div>
+                        </div>
+                        <textarea
+                            class="error-textarea"
+                            id="errorMessage"
+                            placeholder="Traceback (most recent call last):&#10;  File &quot;main.py&quot;, line 42&#10;    ..."
+                            spellcheck="false"
+                            required></textarea>
+                        <div class="char-count"><span id="errorCount">0</span> chars</div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-primary-glow" id="submitBtn">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Fix My Code
+                </button>
+            </form>
+
+            <!-- Rate Limit -->
+            <div class="rate-badge" id="rateLimitInfo">
+                <i class="fas fa-gauge"></i>
+                <span id="rateLimitText"></span>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loader"></div>
+                <div class="loading-text">Analyzing your code...</div>
+                <div class="loading-subtext">This may take a few seconds</div>
+            </div>
+
+            <!-- Error Alert -->
+            <div class="alert-custom alert-error" id="errorAlert">
+                <i class="fas fa-circle-xmark"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Result Panel -->
+            <div class="result-panel" id="resultPanel">
+                <div class="result-header">
+                    <div class="result-label">
+                        <i class="fas fa-circle-check"></i>
+                        Fixed Code
+                    </div>
+                </div>
+
+                <div class="code-output-wrap">
+                    <button class="copy-floating" id="copyBtn" onclick="copyToClipboard()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <pre><code id="fixedCode" class="language-python"></code></pre>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn-ghost accent" onclick="clearForm()">
+                        <i class="fas fa-rotate-right"></i> New Debug
+                    </button>
+                    <button class="btn-ghost warning" onclick="showRedebug()">
+                        <i class="fas fa-bug"></i> Still Broken? Re-debug
+                    </button>
+                    <button class="btn-ghost success" onclick="downloadCode()">
+                        <i class="fas fa-download"></i> Download .py
+                    </button>
+                </div>
+
+                <!-- Re-debug panel -->
+                <div class="redebug-panel" id="redebugPanel">
+                    <div class="redebug-header">
+                        <i class="fas fa-arrow-rotate-right"></i>
+                        Iterative Debug — paste the new error
+                    </div>
+                    <textarea
+                        class="error-textarea"
+                        id="newErrorMessage"
+                        placeholder="Paste the new error from the fixed code..."
+                        style="min-height: 120px"
+                        spellcheck="false"></textarea>
+                    <div class="redebug-actions">
+                        <button class="btn-ghost warning" onclick="debugGeneratedCode()">
+                            <i class="fas fa-wand-magic-sparkles"></i> Fix Again
+                        </button>
+                        <button class="btn-ghost" onclick="hideRedebug()">
+                            <i class="fas fa-xmark"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <div class="footer-divider"></div>
+            <div>Built for portfolio &mdash; AI-powered Python debugging tool</div>
+            <div class="tech-stack">
+                <span class="tech-item"><i class="fab fa-python"></i> Flask</span>
+                <span class="tech-item"><i class="fas fa-robot"></i> Moonshot AI</span>
+                <span class="tech-item"><i class="fas fa-code"></i> Prism.js</span>
+                <span class="tech-item"><i class="fas fa-palette"></i> Custom CSS</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Prism.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <script>
+        // ── Character counters ──
+        const codeEl = document.getElementById('pythonCode');
+        const errorEl = document.getElementById('errorMessage');
+        codeEl.addEventListener('input', () => document.getElementById('codeCount').textContent = codeEl.value.length);
+        errorEl.addEventListener('input', () => document.getElementById('errorCount').textContent = errorEl.value.length);
+
+        // ── Form submit ──
+        document.getElementById('debugForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const code = codeEl.value.trim();
+            const error = errorEl.value.trim();
+            if (!code || !error) { showError('Please fill in both fields.'); return; }
+
+            setLoading(true);
+            hideError();
+            hideResult();
+
+            try {
+                const res = await fetch('/debug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, error })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showResult(data.fixed_code);
+                    if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);
+                } else {
+                    showError(data.error || 'Something went wrong.');
+                }
+            } catch (err) {
+                showError('Network error — check your connection.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // ── UI helpers ──
+        function setLoading(on) {
+            document.getElementById('loadingOverlay').style.display = on ? 'block' : 'none';
+            document.getElementById('submitBtn').disabled = on;
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorAlert');
+            document.getElementById('errorText').textContent = msg;
+            el.style.display = 'flex';
+        }
+        function hideError() { document.getElementById('errorAlert').style.display = 'none'; }
+
+        function showResult(code) {
+            document.getElementById('fixedCode').textContent = code;
+            document.getElementById('resultPanel').style.display = 'block';
+            Prism.highlightAll();
+        }
+        function hideResult() { document.getElementById('resultPanel').style.display = 'none'; }
+
+        function showRateLimit(remaining) {
+            const el = document.getElementById('rateLimitInfo');
+            const text = document.getElementById('rateLimitText');
+            text.textContent = remaining === 0
+                ? 'No requests remaining today (2/day limit).'
+                : `${remaining} request${remaining > 1 ? 's' : ''} remaining today.`;
+            el.className = 'rate-badge ' + (remaining === 0 ? 'warn' : 'info');
+            el.style.display = 'flex';
+        }
+
+        function clearForm() {
+            codeEl.value = '';
+            errorEl.value = '';
+            document.getElementById('codeCount').textContent = '0';
+            document.getElementById('errorCount').textContent = '0';
+            hideResult();
+            hideError();
+            hideRedebug();
+            document.getElementById('rateLimitInfo').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('fixedCode').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.classList.add('copied');
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                }, 2000);
+            });
+        }
+
+        function downloadCode() {
+            const code = document.getElementById('fixedCode').textContent;
+            const blob = new Blob([code], { type: 'text/x-python' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fixed_code.py';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ── Re-debug ──
+        function showRedebug() { document.getElementById('redebugPanel').style.display = 'block'; }
+        function hideRedebug() { document.getElementById('redebugPanel').style.display = 'none'; }
+
+        async function debugGeneratedCode() {
+            const newError = document.getElementById('newErrorMessage').value.trim();
+            if (!newError) { showError('Enter the new error message.'); return; }
+
+            setLoading(true);
+            hideError();
+
+            try {
+                const res = await fetch('/debug-generated', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        generated_code: document.getElementById('fixedCode').textContent,
+                        new_error: newError,
+                        original_code: codeEl.value,
+                        original_error: errorEl.value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showResult(data.fixed_code);
+                    hideRedebug();
+                    document.getElementById('newErrorMessage').value = '';
+                    if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);
+                } else {
+                    showError(data.error || 'Something went wrong.');
+                }
+            } catch (err) {
+                showError('Network error — check your connection.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ── Fetch initial rate limit status ──
+        fetch('/rate-limit-status')
+            .then(r => r.json())
+            .then(data => { if (data.used_today > 0) showRateLimit(data.remaining); });
+    </script>
+</body>
+</html>
