@@ -35,7 +35,7 @@
         .nav-badge{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-muted)}
         .status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-dot 2s ease-in-out infinite}
         @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
-        .provider-count{background:var(--accent-glow);border:1px solid rgba(139,92,246,0.2);padding:.2rem .6rem;border-radius:100px;font-size:.7rem;font-weight:600;color:var(--accent-hover)}
+        .model-badge{background:var(--accent-glow);border:1px solid rgba(139,92,246,0.2);padding:.2rem .6rem;border-radius:100px;font-size:.7rem;font-weight:600;color:var(--accent-hover)}
 
         .main-container{max-width:100%;margin:0 auto;padding:2rem 2.5rem 4rem;position:relative;z-index:1}
 
@@ -51,9 +51,6 @@
         .card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
         .card-icon.purple{background:var(--accent-glow);color:var(--accent)}
         .card-icon.red{background:var(--error-bg);color:var(--error)}
-        .card-icon.green{background:var(--success-bg);color:var(--success)}
-        .card-icon.yellow{background:var(--warning-bg);color:var(--warning)}
-        .card-icon.blue{background:rgba(59,130,246,0.1);color:#3b82f6}
         .card-title{font-size:.9rem;font-weight:600;color:var(--text-primary)}
 
         .editor-grid{display:grid;grid-template-columns:1fr;gap:1.25rem;margin-bottom:1.5rem}
@@ -66,19 +63,7 @@
         .error-textarea::placeholder{color:#7f4444}
         .char-count{text-align:right;font-size:.7rem;color:var(--text-muted);margin-top:.35rem}
 
-        /* ── MODEL SELECTOR ── */
-        .model-selector-bar{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap}
-        .model-select-wrap{position:relative;flex:1;min-width:220px}
-        .model-select{width:100%;appearance:none;-webkit-appearance:none;background:var(--bg-editor);color:var(--text-primary);border:1px solid var(--border);border-radius:10px;padding:.7rem 2.5rem .7rem 1rem;font-family:'Inter',sans-serif;font-size:.82rem;font-weight:500;outline:none;cursor:pointer;transition:border-color .25s ease,box-shadow .25s ease}
-        .model-select:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
-        .model-select option{background:#1a1a2e;color:var(--text-primary);padding:.5rem}
-        .model-select optgroup{color:var(--accent-hover);font-weight:600;font-style:normal}
-        .model-select-arrow{position:absolute;right:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;font-size:.7rem}
-        .model-tag{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .7rem;border-radius:8px;font-size:.72rem;font-weight:600;background:var(--success-bg);border:1px solid rgba(34,197,94,0.2);color:var(--success);white-space:nowrap}
-
-        .bottom-bar{display:flex;gap:.75rem;align-items:stretch}
-        @media(max-width:600px){.bottom-bar{flex-direction:column}}
-        .btn-primary-glow{flex:1;padding:.9rem 2rem;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;border:none;border-radius:12px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;justify-content:center;gap:.5rem;position:relative;overflow:hidden}
+        .btn-primary-glow{width:100%;padding:.9rem 2rem;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;border:none;border-radius:12px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;justify-content:center;gap:.5rem;position:relative;overflow:hidden}
         .btn-primary-glow::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 0%,rgba(255,255,255,0.1)50%,transparent 100%);transform:translateX(-100%);transition:transform .5s ease}
         .btn-primary-glow:hover::before{transform:translateX(100%)}
         .btn-primary-glow:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(139,92,246,0.35)}
@@ -150,10 +135,10 @@
             <div class="logo-text">Py<span>Fixer</span></div>
         </a>
         <div class="nav-right">
-            <span class="provider-count" id="providerCount">...</span>
+            <span class="model-badge">Kimi K2.5</span>
             <div class="nav-badge">
                 <div class="status-dot"></div>
-                <span>Multi-Model AI</span>
+                <span>Online</span>
             </div>
         </div>
     </div>
@@ -162,9 +147,9 @@
 <div class="main-container">
 
     <section class="hero">
-        <div class="hero-badge"><i class="fas fa-sparkles"></i> AI-Powered Debugging</div>
+        <div class="hero-badge"><i class="fas fa-sparkles"></i> Powered by Kimi K2.5</div>
         <h1>Fix Python bugs<br><span class="gradient-text">in seconds.</span></h1>
-        <p>Paste your broken code and error message. Choose from multiple free AI models — Llama, Gemma, Mistral, Moonshot — and get working code back instantly.</p>
+        <p>Paste your broken code and error message. Kimi K2.5 analyzes, understands, and returns working Python code instantly.</p>
     </section>
 
     <div class="glass-card">
@@ -188,24 +173,9 @@
                 </div>
             </div>
 
-            <!-- Model Selector + Submit -->
-            <div class="model-selector-bar">
-                <div class="card-icon blue"><i class="fas fa-microchip"></i></div>
-                <div class="card-title" style="white-space:nowrap">Model</div>
-                <div class="model-select-wrap">
-                    <select class="model-select" id="modelSelect">
-                        <option value="" disabled selected>Loading models...</option>
-                    </select>
-                    <div class="model-select-arrow"><i class="fas fa-chevron-down"></i></div>
-                </div>
-                <div class="model-tag" id="freeTag"><i class="fas fa-gift"></i> Free</div>
-            </div>
-
-            <div class="bottom-bar">
-                <button type="submit" class="btn-primary-glow" id="submitBtn">
-                    <i class="fas fa-wand-magic-sparkles"></i> Fix My Code
-                </button>
-            </div>
+            <button type="submit" class="btn-primary-glow" id="submitBtn">
+                <i class="fas fa-wand-magic-sparkles"></i> Fix My Code
+            </button>
         </form>
 
         <div class="rate-badge" id="rateLimitInfo">
@@ -215,7 +185,7 @@
 
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loader"></div>
-            <div class="loading-text">Analyzing your code...</div>
+            <div class="loading-text">Kimi K2.5 is analyzing your code...</div>
             <div class="loading-subtext">This may take a few seconds</div>
         </div>
 
@@ -227,7 +197,7 @@
         <div class="result-panel" id="resultPanel">
             <div class="result-header">
                 <div class="result-label"><i class="fas fa-circle-check"></i> Fixed Code</div>
-                <div class="model-used-tag" id="modelUsedTag"></div>
+                <div class="model-used-tag">Kimi K2.5</div>
             </div>
             <div class="code-output-wrap">
                 <button class="copy-floating" id="copyBtn" onclick="copyToClipboard()"><i class="fas fa-copy"></i> Copy</button>
@@ -251,10 +221,10 @@
 
     <footer class="footer">
         <div class="footer-divider"></div>
-        <div>Built for portfolio &mdash; multi-model AI Python debugger</div>
+        <div>Built for portfolio &mdash; AI-powered Python debugger</div>
         <div class="tech-stack">
             <span class="tech-item"><i class="fab fa-python"></i> Flask</span>
-            <span class="tech-item"><i class="fas fa-robot"></i> Groq / Cerebras / SambaNova / OpenRouter / Moonshot</span>
+            <span class="tech-item"><i class="fas fa-robot"></i> Kimi K2.5</span>
             <span class="tech-item"><i class="fas fa-code"></i> Prism.js</span>
         </div>
     </footer>
@@ -266,78 +236,26 @@
 <script>
     const codeEl = document.getElementById('pythonCode');
     const errorEl = document.getElementById('errorMessage');
-    const modelSelect = document.getElementById('modelSelect');
-    let providersData = {};
 
     codeEl.addEventListener('input', () => document.getElementById('codeCount').textContent = codeEl.value.length);
     errorEl.addEventListener('input', () => document.getElementById('errorCount').textContent = errorEl.value.length);
 
-    // ── Load providers ──
-    async function loadProviders() {
-        try {
-            const res = await fetch('/providers');
-            providersData = await res.json();
-            const keys = Object.keys(providersData);
-            document.getElementById('providerCount').textContent = keys.length + ' provider' + (keys.length !== 1 ? 's' : '');
-
-            modelSelect.innerHTML = '';
-            if (keys.length === 0) {
-                modelSelect.innerHTML = '<option value="" disabled selected>No providers configured</option>';
-                return;
-            }
-            let first = true;
-            for (const key of keys) {
-                const p = providersData[key];
-                const group = document.createElement('optgroup');
-                group.label = p.name;
-                for (const m of p.models) {
-                    const opt = document.createElement('option');
-                    opt.value = key + '::' + m.id;
-                    opt.textContent = m.label;
-                    if (first) { opt.selected = true; first = false; }
-                    group.appendChild(opt);
-                }
-                modelSelect.appendChild(group);
-            }
-        } catch (e) {
-            modelSelect.innerHTML = '<option value="" disabled selected>Error loading models</option>';
-        }
-    }
-    loadProviders();
-
-    function getSelectedModel() {
-        const val = modelSelect.value;
-        if (!val || !val.includes('::')) return { provider: '', model: '' };
-        const [provider, model] = val.split('::');
-        return { provider, model };
-    }
-
-    function getSelectedLabel() {
-        const opt = modelSelect.options[modelSelect.selectedIndex];
-        if (!opt) return '';
-        const group = opt.parentElement;
-        return (group.label || '') + ' / ' + opt.textContent;
-    }
-
-    // ── Form submit ──
     document.getElementById('debugForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const code = codeEl.value.trim();
         const error = errorEl.value.trim();
         if (!code || !error) { showError('Please fill in both fields.'); return; }
-        const { provider, model } = getSelectedModel();
-        if (!provider) { showError('Please select a model.'); return; }
 
         setLoading(true); hideError(); hideResult();
         try {
             const res = await fetch('/debug', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, error, provider, model })
+                body: JSON.stringify({ code, error })
             });
             const data = await res.json();
             if (data.success) {
-                showResult(data.fixed_code, data.model_used);
+                showResult(data.fixed_code);
                 if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);
             } else {
                 showError(data.error || 'Something went wrong.');
@@ -356,10 +274,9 @@
         document.getElementById('errorAlert').style.display = 'flex';
     }
     function hideError() { document.getElementById('errorAlert').style.display = 'none'; }
-    function showResult(code, modelUsed) {
+    function showResult(code) {
         document.getElementById('fixedCode').textContent = code;
         document.getElementById('resultPanel').style.display = 'block';
-        document.getElementById('modelUsedTag').textContent = modelUsed || getSelectedLabel();
         Prism.highlightAll();
     }
     function hideResult() { document.getElementById('resultPanel').style.display = 'none'; }
@@ -396,8 +313,6 @@
     async function debugGeneratedCode() {
         const newError = document.getElementById('newErrorMessage').value.trim();
         if (!newError) { showError('Enter the new error message.'); return; }
-        const { provider, model } = getSelectedModel();
-        if (!provider) { showError('Please select a model.'); return; }
 
         setLoading(true); hideError();
         try {
@@ -408,13 +323,12 @@
                     generated_code: document.getElementById('fixedCode').textContent,
                     new_error: newError,
                     original_code: codeEl.value,
-                    original_error: errorEl.value,
-                    provider, model
+                    original_error: errorEl.value
                 })
             });
             const data = await res.json();
             if (data.success) {
-                showResult(data.fixed_code, data.model_used);
+                showResult(data.fixed_code);
                 hideRedebug();
                 document.getElementById('newErrorMessage').value = '';
                 if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);

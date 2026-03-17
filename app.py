@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, render_template, request, jsonify
 import httpx
 import logging
@@ -10,92 +11,20 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# ── Provider Registry ──
-# Each provider: env var for key, base URL, and available models.
-# Only providers with a configured API key will be shown to users.
-PROVIDERS = {
-    'groq': {
-        'name': 'Groq',
-        'env_key': 'GROQ_API_KEY',
-        'base_url': 'https://api.groq.com/openai/v1/chat/completions',
-        'models': [
-            {'id': 'llama-3.3-70b-versatile', 'label': 'Llama 3.3 70B'},
-            {'id': 'llama-3.1-8b-instant', 'label': 'Llama 3.1 8B'},
-            {'id': 'gemma2-9b-it', 'label': 'Gemma 2 9B'},
-        ],
-    },
-    'cerebras': {
-        'name': 'Cerebras',
-        'env_key': 'CEREBRAS_API_KEY',
-        'base_url': 'https://api.cerebras.ai/v1/chat/completions',
-        'models': [
-            {'id': 'llama3.1-8b', 'label': 'Llama 3.1 8B'},
-        ],
-    },
-    'sambanova': {
-        'name': 'SambaNova',
-        'env_key': 'SAMBANOVA_API_KEY',
-        'base_url': 'https://api.sambanova.ai/v1/chat/completions',
-        'models': [
-            {'id': 'Meta-Llama-3.3-70B-Instruct', 'label': 'Llama 3.3 70B'},
-            {'id': 'Meta-Llama-3.1-8B-Instruct', 'label': 'Llama 3.1 8B'},
-        ],
-    },
-    'openrouter': {
-        'name': 'OpenRouter',
-        'env_key': 'OPENROUTER_API_KEY',
-        'base_url': 'https://openrouter.ai/api/v1/chat/completions',
-        'models': [
-            {'id': 'meta-llama/llama-3.3-70b-instruct:free', 'label': 'Llama 3.3 70B'},
-            {'id': 'mistralai/mistral-small-3.1-24b-instruct:free', 'label': 'Mistral Small 3.1 24B'},
-        ],
-    },
-    'moonshot': {
-        'name': 'Moonshot',
-        'env_key': 'MOONSHOT_API_KEY',
-        'base_url': 'https://api.moonshot.cn/v1/chat/completions',
-        'models': [
-            {'id': 'moonshot-v1-32k', 'label': 'Moonshot V1 32K'},
-        ],
-    },
-}
-
+# Configuration — Kimi K2.5 only
+API_KEY = os.environ.get('MOONSHOT_API_KEY', '')
+API_BASE_URL = 'https://api.moonshot.ai/v1/chat/completions'
+MODEL_NAME = 'kimi-k2.5'
+MAX_TOKENS = 4000
+TEMPERATURE = 1
 FLASK_HOST = '0.0.0.0'
 FLASK_PORT = int(os.environ.get('PORT', 5001))
-FLASK_DEBUG = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
 MAX_CODE_LENGTH = 50000
 MAX_ERROR_LENGTH = 5000
 DAILY_REQUEST_LIMIT = int(os.environ.get('DAILY_LIMIT', 3))
 SYSTEM_PROMPT = 'You are a Python code debugging expert. When asked to fix code, respond ONLY with the corrected Python code. No explanations, no markdown formatting, no backticks — just the raw working Python code.'
 
 rate_limit_state = {'date': None, 'count': 0}
-
-
-def get_available_providers():
-    """Return providers that have API keys configured."""
-    available = {}
-    for key, provider in PROVIDERS.items():
-        api_key = os.environ.get(provider['env_key'], '')
-        if api_key:
-            available[key] = {
-                'name': provider['name'],
-                'models': provider['models'],
-            }
-    return available
-
-
-def resolve_provider(provider_key, model_id):
-    """Resolve provider config + API key. Returns (base_url, api_key, model_id) or None."""
-    provider = PROVIDERS.get(provider_key)
-    if not provider:
-        return None
-    api_key = os.environ.get(provider['env_key'], '')
-    if not api_key:
-        return None
-    valid_ids = [m['id'] for m in provider['models']]
-    if model_id not in valid_ids:
-        model_id = valid_ids[0]
-    return provider['base_url'], api_key, model_id
 
 
 def check_rate_limit():
@@ -117,43 +46,35 @@ def validate_input(code, error_message):
     return None
 
 
-def call_llm(base_url, api_key, model_id, prompt):
-    """Call any OpenAI-compatible chat completions endpoint with retry on transient 429."""
-    import time
+def call_kimi(prompt):
+    """Call Kimi K2.5 API with retry on transient errors."""
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': f'Bearer {api_key}',
+        'Authorization': f'Bearer {API_KEY}',
     }
     payload = {
-        'model': model_id,
+        'model': MODEL_NAME,
         'messages': [
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': prompt},
         ],
-        'temperature': 0.3,
-        'max_tokens': 4000,
+        'temperature': TEMPERATURE,
+        'max_tokens': MAX_TOKENS,
     }
     last_error = None
     for attempt in range(3):
-        response = httpx.post(base_url, headers=headers, json=payload, timeout=120)
-        # Retry on HTTP 429
+        response = httpx.post(API_BASE_URL, headers=headers, json=payload, timeout=120)
         if response.status_code == 429 and attempt < 2:
-            last_error = 'Provider rate limit — retrying...'
             time.sleep(3 * (attempt + 1))
+            last_error = 'Rate limited — retrying...'
             continue
         data = response.json()
-        # Handle error in JSON body (some providers return 200 with error)
         if 'error' in data:
-            err_code = data['error'].get('code', response.status_code)
-            if err_code == 429 and attempt < 2:
-                last_error = data['error'].get('message', 'Rate limited')
-                time.sleep(3 * (attempt + 1))
-                continue
             raise Exception(data['error'].get('message', 'Unknown API error'))
         response.raise_for_status()
         content = data['choices'][0]['message']['content']
         if not content or not content.strip():
-            raise Exception('Model returned an empty response. Try a different model.')
+            raise Exception('Model returned an empty response. Please try again.')
         return content
     raise Exception(last_error or 'Request failed after retries.')
 
@@ -169,37 +90,9 @@ def strip_markdown_fences(code):
     return code.strip()
 
 
-def do_debug(prompt, provider_key, model_id):
-    """Run a debug prompt against the selected provider. Returns (fixed_code, error_string)."""
-    resolved = resolve_provider(provider_key, model_id)
-    if not resolved:
-        return None, f'Provider "{provider_key}" is not configured.'
-    base_url, api_key, model_id = resolved
-    try:
-        result = call_llm(base_url, api_key, model_id, prompt)
-        return strip_markdown_fences(result), None
-    except httpx.HTTPStatusError as e:
-        logger.error(f"API HTTP error ({provider_key}): {e.response.status_code}")
-        if e.response.status_code == 401:
-            return None, 'Invalid API key for this provider.'
-        if e.response.status_code == 429:
-            return None, 'Provider rate limit exceeded. Try another model or wait.'
-        return None, f'API error (status {e.response.status_code}).'
-    except Exception as e:
-        logger.error(f"API error ({provider_key}): {e}")
-        return None, f'Could not process: {e}'
-
-
-# ── Routes ──
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
-
-@app.route('/providers')
-def providers():
-    return jsonify(get_available_providers())
 
 
 @app.route('/debug', methods=['POST'])
@@ -211,15 +104,13 @@ def debug_code():
 
         code = data.get('code', '').strip()
         error = data.get('error', '').strip()
-        provider_key = data.get('provider', '')
-        model_id = data.get('model', '')
 
         if not code:
             return jsonify({'error': 'Python code is required'}), 400
         if not error:
             return jsonify({'error': 'Error message is required'}), 400
-        if not provider_key or not model_id:
-            return jsonify({'error': 'Please select a model'}), 400
+        if not API_KEY:
+            return jsonify({'error': 'API key not configured.'}), 500
 
         validation_error = validate_input(code, error)
         if validation_error:
@@ -241,10 +132,13 @@ def debug_code():
 
 Respond with ONLY the fixed Python code. No explanations."""
 
-        fixed_code, err = do_debug(prompt, provider_key, model_id)
-        if err:
+        try:
+            result = call_kimi(prompt)
+            fixed_code = strip_markdown_fences(result)
+        except Exception as e:
             rate_limit_state['count'] -= 1
-            return jsonify({'error': err}), 500
+            logger.error(f"Kimi API error: {e}")
+            return jsonify({'error': str(e)}), 500
 
         return jsonify({
             'success': True,
@@ -252,7 +146,6 @@ Respond with ONLY the fixed Python code. No explanations."""
             'original_code': code,
             'error_message': error,
             'remaining_requests': remaining,
-            'model_used': model_id,
         })
 
     except Exception as e:
@@ -271,15 +164,13 @@ def debug_generated_code():
         new_error = data.get('new_error', '').strip()
         original_code = data.get('original_code', '').strip()
         original_error = data.get('original_error', '').strip()
-        provider_key = data.get('provider', '')
-        model_id = data.get('model', '')
 
         if not generated_code:
             return jsonify({'error': 'Generated code is required'}), 400
         if not new_error:
             return jsonify({'error': 'New error message is required'}), 400
-        if not provider_key or not model_id:
-            return jsonify({'error': 'Please select a model'}), 400
+        if not API_KEY:
+            return jsonify({'error': 'API key not configured.'}), 500
 
         validation_error = validate_input(generated_code, new_error)
         if validation_error:
@@ -307,10 +198,13 @@ def debug_generated_code():
 
 Respond with ONLY the corrected Python code. No explanations."""
 
-        fixed_code, err = do_debug(prompt, provider_key, model_id)
-        if err:
+        try:
+            result = call_kimi(prompt)
+            fixed_code = strip_markdown_fences(result)
+        except Exception as e:
             rate_limit_state['count'] -= 1
-            return jsonify({'error': err}), 500
+            logger.error(f"Kimi API error (re-debug): {e}")
+            return jsonify({'error': str(e)}), 500
 
         return jsonify({
             'success': True,
@@ -319,7 +213,6 @@ Respond with ONLY the corrected Python code. No explanations."""
             'new_error_message': new_error,
             'iteration': 'recursive_debug',
             'remaining_requests': remaining,
-            'model_used': model_id,
         })
 
     except Exception as e:
@@ -340,11 +233,10 @@ def rate_limit_status():
 
 @app.route('/health')
 def health_check():
-    available = list(get_available_providers().keys())
     return jsonify({
         'status': 'healthy',
-        'providers': available,
-        'provider_count': len(available),
+        'model': MODEL_NAME,
+        'api_key_status': 'configured' if API_KEY else 'missing',
     })
 
 
@@ -359,8 +251,8 @@ def internal_error(error):
 
 
 if __name__ == '__main__':
-    avail = get_available_providers()
-    print(f"Providers configured: {', '.join(avail.keys()) or 'NONE'}")
+    print(f"API key: {'configured' if API_KEY else 'MISSING!'}")
+    print(f"Model: {MODEL_NAME}")
     print(f"Rate limit: {DAILY_REQUEST_LIMIT} requests/day")
     print(f"Starting PyFixer on http://localhost:{FLASK_PORT}")
-    app.run(debug=FLASK_DEBUG, host=FLASK_HOST, port=FLASK_PORT)
+    app.run(debug=True, host=FLASK_HOST, port=FLASK_PORT)
