@@ -114,6 +114,12 @@
         .tech-stack{display:flex;justify-content:center;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap}
         .tech-item{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--text-muted)}
 
+        .examples-bar{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+        .examples-label{font-size:.78rem;font-weight:600;color:var(--text-muted);white-space:nowrap;margin-right:.25rem}
+        .example-chip{padding:.4rem .8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:.75rem;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:.35rem}
+        .example-chip:hover{background:var(--accent-glow);border-color:rgba(139,92,246,0.3);color:var(--accent-hover)}
+        .example-chip.active{background:var(--accent-glow);border-color:rgba(139,92,246,0.4);color:var(--accent-hover)}
+
         @media(max-width:600px){
             .navbar-inner{padding:0 1rem}
             .main-container{padding:1.5rem 1rem 3rem}
@@ -153,6 +159,14 @@
     </section>
 
     <div class="glass-card">
+        <div class="examples-bar">
+            <span class="examples-label"><i class="fas fa-flask"></i> Try an example:</span>
+            <button class="example-chip" onclick="loadExample(0)"><i class="fas fa-play"></i> Missing Arg</button>
+            <button class="example-chip" onclick="loadExample(1)"><i class="fas fa-play"></i> Undefined Var</button>
+            <button class="example-chip" onclick="loadExample(2)"><i class="fas fa-play"></i> Index Error</button>
+            <button class="example-chip" onclick="loadExample(3)"><i class="fas fa-play"></i> Zero Division</button>
+            <button class="example-chip" onclick="loadExample(4)"><i class="fas fa-play"></i> Type Error</button>
+        </div>
         <form id="debugForm">
             <div class="editor-grid">
                 <div>
@@ -234,6 +248,38 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 
 <script>
+    const EXAMPLES = [
+        {
+            code: 'def calculate_average(numbers):\n    total = sum(numbers)\n    return total / len(numbers)\n\nnumbers = [1, 2, 3, 4, 5]\nresult = calculate_average()\nprint(f"Average: {result}")',
+            error: "TypeError: calculate_average() missing 1 required positional argument: 'numbers'"
+        },
+        {
+            code: 'def greet_user():\n    print(f"Hello, {username}!")\n\ngreet_user()',
+            error: "NameError: name 'username' is not defined"
+        },
+        {
+            code: 'my_list = [1, 2, 3]\nprint(my_list[5])',
+            error: 'IndexError: list index out of range'
+        },
+        {
+            code: 'def divide_numbers(a, b):\n    return a / b\n\nresult = divide_numbers(10, 0)\nprint(result)',
+            error: 'ZeroDivisionError: division by zero'
+        },
+        {
+            code: 'def add_numbers(a, b):\n    return a + b\n\nresult = add_numbers("hello", 5)\nprint(result)',
+            error: 'TypeError: can only concatenate str (not "int") to str'
+        }
+    ];
+
+    function loadExample(i) {
+        codeEl.value = EXAMPLES[i].code;
+        errorEl.value = EXAMPLES[i].error;
+        document.getElementById('codeCount').textContent = codeEl.value.length;
+        document.getElementById('errorCount').textContent = errorEl.value.length;
+        hideResult(); hideError(); hideRedebug();
+        document.querySelectorAll('.example-chip').forEach((c, idx) => c.classList.toggle('active', idx === i));
+    }
+
     const codeEl = document.getElementById('pythonCode');
     const errorEl = document.getElementById('errorMessage');
 
