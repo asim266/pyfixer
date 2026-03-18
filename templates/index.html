@@ -3,10 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyFixer — AI Python Debugger</title>
+    <title>PyFixer — AI Python Debugger | Fix Python Bugs Instantly</title>
+    <meta name="description" content="Free AI-powered Python debugger. Paste your buggy code and error message, get working code back instantly. Powered by Kimi K2.5 or bring your own API key.">
+    <meta name="author" content="Muhammad Asim">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="PyFixer — AI Python Debugger">
+    <meta property="og:description" content="Fix Python bugs in seconds. Paste code + error, get working code back. Free AI-powered debugging tool.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pyfixer.satekk.com">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="PyFixer — AI Python Debugger">
+    <meta name="twitter:description" content="Fix Python bugs in seconds with AI. Free, no signup required.">
+
+    <!-- Favicon (Python emoji as SVG data URI) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐍</text></svg>">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
 
@@ -20,6 +36,7 @@
             --success:#22c55e;--success-bg:rgba(34,197,94,0.1);
             --error:#ef4444;--error-bg:rgba(239,68,68,0.1);
             --warning:#f59e0b;--warning-bg:rgba(245,158,11,0.1);
+            --diff-add:rgba(34,197,94,0.12);--diff-del:rgba(239,68,68,0.12);
         }
         body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
         body::before{content:'';position:fixed;top:-40%;left:-20%;width:60%;height:60%;background:radial-gradient(circle,rgba(139,92,246,0.08)0%,transparent 70%);pointer-events:none;z-index:0}
@@ -31,11 +48,13 @@
         .logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#3b82f6);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#fff}
         .logo-text{font-weight:800;font-size:1.2rem;color:var(--text-primary);letter-spacing:-.5px}
         .logo-text span{color:var(--accent)}
-        .nav-right{display:flex;align-items:center;gap:1rem}
+        .nav-right{display:flex;align-items:center;gap:.75rem}
         .nav-badge{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-muted)}
         .status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-dot 2s ease-in-out infinite}
         @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
         .model-badge{background:var(--accent-glow);border:1px solid rgba(139,92,246,0.2);padding:.2rem .6rem;border-radius:100px;font-size:.7rem;font-weight:600;color:var(--accent-hover)}
+        .gh-link{color:var(--text-muted);font-size:1.1rem;transition:color .2s}
+        .gh-link:hover{color:var(--text-primary)}
 
         .main-container{max-width:100%;margin:0 auto;padding:2rem 2.5rem 4rem;position:relative;z-index:1}
 
@@ -51,17 +70,42 @@
         .card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
         .card-icon.purple{background:var(--accent-glow);color:var(--accent)}
         .card-icon.red{background:var(--error-bg);color:var(--error)}
+        .card-icon.blue{background:rgba(59,130,246,0.1);color:#3b82f6}
         .card-title{font-size:.9rem;font-weight:600;color:var(--text-primary)}
 
-        .editor-grid{display:grid;grid-template-columns:1fr;gap:1.25rem;margin-bottom:1.5rem}
+        .examples-bar{display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
+        .examples-label{font-size:.78rem;font-weight:600;color:var(--text-muted);white-space:nowrap;margin-right:.25rem}
+        .example-chip{padding:.4rem .8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:.75rem;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:.35rem}
+        .example-chip:hover,.example-chip.active{background:var(--accent-glow);border-color:rgba(139,92,246,0.3);color:var(--accent-hover)}
+
+        .editor-grid{display:grid;grid-template-columns:1fr;gap:1.25rem;margin-bottom:1.25rem}
         @media(min-width:768px){.editor-grid{grid-template-columns:1fr 1fr}}
-        .code-textarea{width:100%;min-height:320px;background:var(--bg-editor);color:#e6edf3;border:1px solid var(--border);border-radius:10px;padding:1rem 1.15rem;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.85rem;line-height:1.65;resize:vertical;outline:none;transition:border-color .25s ease,box-shadow .25s ease}
+        .code-textarea,.error-textarea{width:100%;min-height:280px;background:var(--bg-editor);border:1px solid var(--border);border-radius:10px;padding:1rem 1.15rem;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.84rem;line-height:1.65;resize:vertical;outline:none;transition:border-color .25s ease,box-shadow .25s ease}
+        .code-textarea{color:#e6edf3}
         .code-textarea:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
         .code-textarea::placeholder{color:var(--text-muted)}
-        .error-textarea{width:100%;min-height:320px;background:var(--bg-editor);color:#fca5a5;border:1px solid var(--border);border-radius:10px;padding:1rem 1.15rem;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.82rem;line-height:1.65;resize:vertical;outline:none;transition:border-color .25s ease,box-shadow .25s ease}
+        .error-textarea{color:#fca5a5}
         .error-textarea:focus{border-color:rgba(239,68,68,0.5);box-shadow:0 0 0 3px var(--error-bg)}
         .error-textarea::placeholder{color:#7f4444}
         .char-count{text-align:right;font-size:.7rem;color:var(--text-muted);margin-top:.35rem}
+
+        /* ── BYOK Toggle ── */
+        .byok-toggle{display:flex;align-items:center;gap:.6rem;margin-bottom:1.25rem;cursor:pointer;user-select:none}
+        .byok-toggle-label{font-size:.82rem;font-weight:500;color:var(--text-secondary)}
+        .byok-switch{width:36px;height:20px;background:var(--border);border-radius:100px;position:relative;transition:background .2s}
+        .byok-switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-muted);transition:all .2s}
+        .byok-switch.on{background:var(--accent)}
+        .byok-switch.on::after{left:18px;background:#fff}
+        .byok-panel{display:none;margin-bottom:1.25rem;padding:1.25rem;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:12px;animation:slideIn .3s ease}
+        .byok-panel.show{display:block}
+        .byok-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+        @media(max-width:600px){.byok-grid{grid-template-columns:1fr}}
+        .byok-select,.byok-input{width:100%;background:var(--bg-editor);color:var(--text-primary);border:1px solid var(--border);border-radius:8px;padding:.55rem .9rem;font-family:'Inter',sans-serif;font-size:.8rem;outline:none;transition:border-color .2s}
+        .byok-select:focus,.byok-input:focus{border-color:var(--border-focus)}
+        .byok-select option,.byok-select optgroup{background:#1a1a2e;color:var(--text-primary)}
+        .byok-hint{font-size:.7rem;color:var(--text-muted);margin-top:.4rem}
+        .byok-hint a{color:var(--accent-hover);text-decoration:none}
+        .byok-hint a:hover{text-decoration:underline}
 
         .btn-primary-glow{width:100%;padding:.9rem 2rem;background:linear-gradient(135deg,var(--accent),#6d28d9);color:#fff;border:none;border-radius:12px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;justify-content:center;gap:.5rem;position:relative;overflow:hidden}
         .btn-primary-glow::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 0%,rgba(255,255,255,0.1)50%,transparent 100%);transform:translateX(-100%);transition:transform .5s ease}
@@ -89,16 +133,38 @@
         @keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         .alert-error{background:var(--error-bg);border:1px solid rgba(239,68,68,0.2);color:#fca5a5}
 
+        /* ── RESULT ── */
         .result-panel{display:none;margin-top:1.5rem;animation:slideIn .4s ease}
         .result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
         .result-label{display:flex;align-items:center;gap:.5rem;font-weight:600;font-size:.95rem;color:var(--success)}
         .model-used-tag{font-size:.72rem;padding:.25rem .65rem;border-radius:6px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:#93c5fd;font-weight:500}
-        .code-output-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-        .code-output-wrap pre{background:var(--bg-editor)!important;margin:0!important;padding:1.25rem!important;border-radius:12px!important;font-size:.84rem!important;line-height:1.65!important;overflow-x:auto}
+
+        /* Explanation */
+        .explanation-box{background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1rem;font-size:.84rem;color:var(--text-secondary);line-height:1.6;display:none}
+        .explanation-box i{color:var(--accent);margin-right:.4rem}
+
+        /* Diff view */
+        .diff-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)}
+        .diff-tab{padding:.5rem 1rem;font-size:.78rem;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:'Inter',sans-serif;background:none;border-top:none;border-left:none;border-right:none}
+        .diff-tab.active{color:var(--accent-hover);border-bottom-color:var(--accent)}
+        .diff-tab:hover{color:var(--text-secondary)}
+        .diff-content{display:none}
+        .diff-content.active{display:block}
+        .code-output-wrap{position:relative;border-radius:0 0 12px 12px;overflow:hidden;border:1px solid var(--border);border-top:none}
+        .code-output-wrap.full-radius{border-radius:12px;border-top:1px solid var(--border)}
+        .code-output-wrap pre{background:var(--bg-editor)!important;margin:0!important;padding:1.25rem!important;font-size:.84rem!important;line-height:1.65!important;overflow-x:auto}
         .code-output-wrap code{font-family:'JetBrains Mono',monospace!important}
         .copy-floating{position:absolute;top:.75rem;right:.75rem;padding:.4rem .75rem;background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-secondary);font-size:.75rem;font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s ease;z-index:2}
         .copy-floating:hover{background:rgba(255,255,255,0.14);color:var(--text-primary)}
         .copy-floating.copied{background:var(--success-bg);border-color:rgba(34,197,94,0.3);color:var(--success)}
+
+        /* Diff lines */
+        .diff-line{font-family:'JetBrains Mono',monospace;font-size:.84rem;line-height:1.65;padding:0 1.25rem;white-space:pre-wrap;word-break:break-all}
+        .diff-line.add{background:var(--diff-add);color:#86efac}
+        .diff-line.del{background:var(--diff-del);color:#fca5a5;text-decoration:line-through}
+        .diff-line.ctx{color:#e6edf3}
+        .diff-wrap{background:var(--bg-editor);padding:.75rem 0;overflow-x:auto;border-radius:0 0 12px 12px;border:1px solid var(--border);border-top:none}
+
         .action-bar{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem}
 
         .redebug-panel{display:none;margin-top:1.25rem;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:14px;padding:1.5rem;animation:slideIn .3s ease}
@@ -111,14 +177,10 @@
 
         .footer{text-align:center;padding:2.5rem 1rem 2rem;color:var(--text-muted);font-size:.75rem}
         .footer-divider{width:60px;height:1px;background:var(--border);margin:0 auto 1rem}
+        .footer a{color:var(--accent-hover);text-decoration:none}
+        .footer a:hover{text-decoration:underline}
         .tech-stack{display:flex;justify-content:center;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap}
         .tech-item{display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--text-muted)}
-
-        .examples-bar{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
-        .examples-label{font-size:.78rem;font-weight:600;color:var(--text-muted);white-space:nowrap;margin-right:.25rem}
-        .example-chip{padding:.4rem .8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:.75rem;font-weight:500;color:var(--text-secondary);cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:.35rem}
-        .example-chip:hover{background:var(--accent-glow);border-color:rgba(139,92,246,0.3);color:var(--accent-hover)}
-        .example-chip.active{background:var(--accent-glow);border-color:rgba(139,92,246,0.4);color:var(--accent-hover)}
 
         @media(max-width:600px){
             .navbar-inner{padding:0 1rem}
@@ -141,11 +203,12 @@
             <div class="logo-text">Py<span>Fixer</span></div>
         </a>
         <div class="nav-right">
-            <span class="model-badge">Kimi K2.5</span>
+            <span class="model-badge" id="activeModelBadge">Kimi K2.5</span>
             <div class="nav-badge">
                 <div class="status-dot"></div>
                 <span>Online</span>
             </div>
+            <a href="https://github.com/asim266/pyfixer" target="_blank" rel="noopener" class="gh-link" title="View on GitHub"><i class="fab fa-github"></i></a>
         </div>
     </div>
 </nav>
@@ -153,12 +216,13 @@
 <div class="main-container">
 
     <section class="hero">
-        <div class="hero-badge"><i class="fas fa-sparkles"></i> Powered by Kimi K2.5</div>
+        <div class="hero-badge"><i class="fas fa-sparkles"></i> AI-Powered Debugging</div>
         <h1>Fix Python bugs<br><span class="gradient-text">in seconds.</span></h1>
-        <p>Paste your broken code and error message. Kimi K2.5 analyzes, understands, and returns working Python code instantly.</p>
+        <p>Paste your broken code and error message. Get fixed code, a diff view, and an explanation of the fix. Bring your own API key for unlimited access.</p>
     </section>
 
     <div class="glass-card">
+        <!-- Examples -->
         <div class="examples-bar">
             <span class="examples-label"><i class="fas fa-flask"></i> Try an example:</span>
             <button class="example-chip" onclick="loadExample(0)"><i class="fas fa-play"></i> Missing Arg</button>
@@ -167,12 +231,13 @@
             <button class="example-chip" onclick="loadExample(3)"><i class="fas fa-play"></i> Zero Division</button>
             <button class="example-chip" onclick="loadExample(4)"><i class="fas fa-play"></i> Type Error</button>
         </div>
+
         <form id="debugForm">
             <div class="editor-grid">
                 <div>
                     <div class="card-header-custom">
                         <div class="card-icon purple"><i class="fas fa-code"></i></div>
-                        <div class="card-title">Your Code</div>
+                        <label class="card-title" for="pythonCode">Your Code</label>
                     </div>
                     <textarea class="code-textarea" id="pythonCode" placeholder="# Paste your Python code here..." spellcheck="false" required></textarea>
                     <div class="char-count"><span id="codeCount">0</span> chars</div>
@@ -180,11 +245,35 @@
                 <div>
                     <div class="card-header-custom">
                         <div class="card-icon red"><i class="fas fa-triangle-exclamation"></i></div>
-                        <div class="card-title">Error / Traceback</div>
+                        <label class="card-title" for="errorMessage">Error / Traceback</label>
                     </div>
                     <textarea class="error-textarea" id="errorMessage" placeholder="Traceback (most recent call last):&#10;  File &quot;main.py&quot;, line 42&#10;    ..." spellcheck="false" required></textarea>
                     <div class="char-count"><span id="errorCount">0</span> chars</div>
                 </div>
+            </div>
+
+            <!-- BYOK Toggle -->
+            <div class="byok-toggle" onclick="toggleByok()">
+                <div class="byok-switch" id="byokSwitch"></div>
+                <span class="byok-toggle-label"><i class="fas fa-key"></i> Use your own API key (unlimited, no rate limit)</span>
+            </div>
+
+            <!-- BYOK Panel -->
+            <div class="byok-panel" id="byokPanel">
+                <div class="byok-grid">
+                    <div>
+                        <select class="byok-select" id="byokProvider" onchange="onProviderChange()">
+                            <option value="" disabled selected>Select provider...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select class="byok-select" id="byokModel">
+                            <option value="" disabled selected>Select model...</option>
+                        </select>
+                    </div>
+                </div>
+                <input class="byok-input" id="byokKey" type="password" placeholder="Paste your API key here..." autocomplete="off">
+                <div class="byok-hint" id="byokHint">Select a provider to see signup link</div>
             </div>
 
             <button type="submit" class="btn-primary-glow" id="submitBtn">
@@ -192,36 +281,60 @@
             </button>
         </form>
 
-        <div class="rate-badge" id="rateLimitInfo">
+        <div class="rate-badge" id="rateLimitInfo" role="status" aria-live="polite">
             <i class="fas fa-gauge"></i>
             <span id="rateLimitText"></span>
         </div>
 
-        <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
             <div class="loader"></div>
-            <div class="loading-text">Kimi K2.5 is analyzing your code...</div>
+            <div class="loading-text">Analyzing your code...</div>
             <div class="loading-subtext">This may take a few seconds</div>
         </div>
 
-        <div class="alert-custom alert-error" id="errorAlert">
+        <div class="alert-custom alert-error" id="errorAlert" role="alert" aria-live="assertive">
             <i class="fas fa-circle-xmark"></i>
             <span id="errorText"></span>
         </div>
 
+        <!-- Result Panel -->
         <div class="result-panel" id="resultPanel">
             <div class="result-header">
                 <div class="result-label"><i class="fas fa-circle-check"></i> Fixed Code</div>
-                <div class="model-used-tag">Kimi K2.5</div>
+                <div class="model-used-tag" id="modelUsedTag">Kimi K2.5</div>
             </div>
-            <div class="code-output-wrap">
-                <button class="copy-floating" id="copyBtn" onclick="copyToClipboard()"><i class="fas fa-copy"></i> Copy</button>
-                <pre><code id="fixedCode" class="language-python"></code></pre>
+
+            <!-- Explanation -->
+            <div class="explanation-box" id="explanationBox">
+                <i class="fas fa-lightbulb"></i>
+                <span id="explanationText"></span>
             </div>
+
+            <!-- Diff Tabs -->
+            <div class="diff-tabs">
+                <button class="diff-tab active" onclick="switchTab('fixed')">Fixed Code</button>
+                <button class="diff-tab" onclick="switchTab('diff')">Diff View</button>
+            </div>
+
+            <!-- Fixed code tab -->
+            <div class="diff-content active" id="tab-fixed">
+                <div class="code-output-wrap">
+                    <button class="copy-floating" id="copyBtn" onclick="copyToClipboard()"><i class="fas fa-copy"></i> Copy</button>
+                    <pre><code id="fixedCode" class="language-python"></code></pre>
+                </div>
+            </div>
+
+            <!-- Diff tab -->
+            <div class="diff-content" id="tab-diff">
+                <div class="diff-wrap" id="diffWrap"></div>
+            </div>
+
             <div class="action-bar">
                 <button class="btn-ghost accent" onclick="clearForm()"><i class="fas fa-rotate-right"></i> New Debug</button>
                 <button class="btn-ghost warning" onclick="showRedebug()"><i class="fas fa-bug"></i> Still Broken? Re-debug</button>
                 <button class="btn-ghost success" onclick="downloadCode()"><i class="fas fa-download"></i> Download .py</button>
             </div>
+
             <div class="redebug-panel" id="redebugPanel">
                 <div class="redebug-header"><i class="fas fa-arrow-rotate-right"></i> Iterative Debug — paste the new error</div>
                 <textarea class="error-textarea" id="newErrorMessage" placeholder="Paste the new error from the fixed code..." style="min-height:120px" spellcheck="false"></textarea>
@@ -235,10 +348,11 @@
 
     <footer class="footer">
         <div class="footer-divider"></div>
-        <div>Built for portfolio &mdash; AI-powered Python debugger</div>
+        <div>Built by <a href="https://github.com/asim266" target="_blank">Muhammad Asim</a> &mdash; <a href="https://github.com/asim266/pyfixer" target="_blank">View Source on GitHub</a></div>
         <div class="tech-stack">
             <span class="tech-item"><i class="fab fa-python"></i> Flask</span>
             <span class="tech-item"><i class="fas fa-robot"></i> Kimi K2.5</span>
+            <span class="tech-item"><i class="fas fa-key"></i> BYOK Multi-Model</span>
             <span class="tech-item"><i class="fas fa-code"></i> Prism.js</span>
         </div>
     </footer>
@@ -249,28 +363,29 @@
 
 <script>
     const EXAMPLES = [
-        {
-            code: 'def calculate_average(numbers):\n    total = sum(numbers)\n    return total / len(numbers)\n\nnumbers = [1, 2, 3, 4, 5]\nresult = calculate_average()\nprint(f"Average: {result}")',
-            error: "TypeError: calculate_average() missing 1 required positional argument: 'numbers'"
-        },
-        {
-            code: 'def greet_user():\n    print(f"Hello, {username}!")\n\ngreet_user()',
-            error: "NameError: name 'username' is not defined"
-        },
-        {
-            code: 'my_list = [1, 2, 3]\nprint(my_list[5])',
-            error: 'IndexError: list index out of range'
-        },
-        {
-            code: 'def divide_numbers(a, b):\n    return a / b\n\nresult = divide_numbers(10, 0)\nprint(result)',
-            error: 'ZeroDivisionError: division by zero'
-        },
-        {
-            code: 'def add_numbers(a, b):\n    return a + b\n\nresult = add_numbers("hello", 5)\nprint(result)',
-            error: 'TypeError: can only concatenate str (not "int") to str'
-        }
+        { code: 'def calculate_average(numbers):\n    total = sum(numbers)\n    return total / len(numbers)\n\nnumbers = [1, 2, 3, 4, 5]\nresult = calculate_average()\nprint(f"Average: {result}")', error: "TypeError: calculate_average() missing 1 required positional argument: 'numbers'" },
+        { code: 'def greet_user():\n    print(f"Hello, {username}!")\n\ngreet_user()', error: "NameError: name 'username' is not defined" },
+        { code: 'my_list = [1, 2, 3]\nprint(my_list[5])', error: 'IndexError: list index out of range' },
+        { code: 'def divide_numbers(a, b):\n    return a / b\n\nresult = divide_numbers(10, 0)\nprint(result)', error: 'ZeroDivisionError: division by zero' },
+        { code: 'def add_numbers(a, b):\n    return a + b\n\nresult = add_numbers("hello", 5)\nprint(result)', error: 'TypeError: can only concatenate str (not "int") to str' }
     ];
 
+    const codeEl = document.getElementById('pythonCode');
+    const errorEl = document.getElementById('errorMessage');
+    let byokEnabled = false;
+    let byokProviders = {};
+
+    codeEl.addEventListener('input', () => document.getElementById('codeCount').textContent = codeEl.value.length);
+    errorEl.addEventListener('input', () => document.getElementById('errorCount').textContent = errorEl.value.length);
+
+    // Ctrl+Enter to submit
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            document.getElementById('debugForm').dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+
+    // ── Examples ──
     function loadExample(i) {
         codeEl.value = EXAMPLES[i].code;
         errorEl.value = EXAMPLES[i].error;
@@ -280,28 +395,114 @@
         document.querySelectorAll('.example-chip').forEach((c, idx) => c.classList.toggle('active', idx === i));
     }
 
-    const codeEl = document.getElementById('pythonCode');
-    const errorEl = document.getElementById('errorMessage');
+    // ── BYOK ──
+    function toggleByok() {
+        byokEnabled = !byokEnabled;
+        document.getElementById('byokSwitch').classList.toggle('on', byokEnabled);
+        document.getElementById('byokPanel').classList.toggle('show', byokEnabled);
+        document.getElementById('activeModelBadge').textContent = byokEnabled ? 'BYOK' : 'Kimi K2.5';
+    }
 
-    codeEl.addEventListener('input', () => document.getElementById('codeCount').textContent = codeEl.value.length);
-    errorEl.addEventListener('input', () => document.getElementById('errorCount').textContent = errorEl.value.length);
+    async function loadByokProviders() {
+        try {
+            const res = await fetch('/byok-providers');
+            byokProviders = await res.json();
+            const sel = document.getElementById('byokProvider');
+            sel.innerHTML = '<option value="" disabled selected>Select provider...</option>';
+            for (const [key, p] of Object.entries(byokProviders)) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = p.name;
+                sel.appendChild(opt);
+            }
+        } catch (e) {}
+    }
+    loadByokProviders();
 
+    function onProviderChange() {
+        const key = document.getElementById('byokProvider').value;
+        const p = byokProviders[key];
+        if (!p) return;
+        const modelSel = document.getElementById('byokModel');
+        modelSel.innerHTML = '';
+        for (const m of p.models) {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.label;
+            modelSel.appendChild(opt);
+        }
+        document.getElementById('byokHint').innerHTML = 'Get your key: <a href="' + p.signup_url + '" target="_blank">' + p.signup_url + '</a>';
+        document.getElementById('activeModelBadge').textContent = p.name;
+    }
+
+    function getByokPayload() {
+        if (!byokEnabled) return {};
+        return {
+            provider: document.getElementById('byokProvider').value,
+            model: document.getElementById('byokModel').value,
+            api_key: document.getElementById('byokKey').value.trim(),
+        };
+    }
+
+    // ── Diff ──
+    function computeDiff(original, fixed) {
+        const origLines = original.split('\n');
+        const fixedLines = fixed.split('\n');
+        const html = [];
+        const maxLen = Math.max(origLines.length, fixedLines.length);
+        // Simple LCS-based diff
+        let i = 0, j = 0;
+        while (i < origLines.length || j < fixedLines.length) {
+            if (i < origLines.length && j < fixedLines.length && origLines[i] === fixedLines[j]) {
+                html.push('<div class="diff-line ctx">' + escHtml(origLines[i]) + '</div>');
+                i++; j++;
+            } else if (j < fixedLines.length && (i >= origLines.length || !origLines.includes(fixedLines[j]))) {
+                html.push('<div class="diff-line add">+ ' + escHtml(fixedLines[j]) + '</div>');
+                j++;
+            } else if (i < origLines.length && (j >= fixedLines.length || !fixedLines.includes(origLines[i]))) {
+                html.push('<div class="diff-line del">- ' + escHtml(origLines[i]) + '</div>');
+                i++;
+            } else {
+                html.push('<div class="diff-line del">- ' + escHtml(origLines[i]) + '</div>');
+                html.push('<div class="diff-line add">+ ' + escHtml(fixedLines[j]) + '</div>');
+                i++; j++;
+            }
+        }
+        return html.join('');
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Tabs ──
+    function switchTab(tab) {
+        document.querySelectorAll('.diff-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.diff-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[onclick="switchTab(\'' + tab + '\')"]').classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // ── Form ──
     document.getElementById('debugForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const code = codeEl.value.trim();
         const error = errorEl.value.trim();
         if (!code || !error) { showError('Please fill in both fields.'); return; }
+        if (byokEnabled && !document.getElementById('byokKey').value.trim()) {
+            showError('Please enter your API key.'); return;
+        }
 
         setLoading(true); hideError(); hideResult();
         try {
             const res = await fetch('/debug', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code, error })
+                body: JSON.stringify({ code, error, ...getByokPayload() })
             });
             const data = await res.json();
             if (data.success) {
-                showResult(data.fixed_code);
+                showResult(data.fixed_code, data.explanation, data.original_code, data.model_used);
                 if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);
             } else {
                 showError(data.error || 'Something went wrong.');
@@ -320,27 +521,50 @@
         document.getElementById('errorAlert').style.display = 'flex';
     }
     function hideError() { document.getElementById('errorAlert').style.display = 'none'; }
-    function showResult(code) {
-        document.getElementById('fixedCode').textContent = code;
+
+    function showResult(fixedCode, explanation, originalCode, modelUsed) {
+        document.getElementById('fixedCode').textContent = fixedCode;
         document.getElementById('resultPanel').style.display = 'block';
+        document.getElementById('modelUsedTag').textContent = modelUsed || 'Kimi K2.5';
         Prism.highlightAll();
+
+        // Explanation
+        const expBox = document.getElementById('explanationBox');
+        if (explanation) {
+            document.getElementById('explanationText').textContent = explanation;
+            expBox.style.display = 'block';
+        } else {
+            expBox.style.display = 'none';
+        }
+
+        // Diff
+        const diffHtml = computeDiff(originalCode || codeEl.value, fixedCode);
+        document.getElementById('diffWrap').innerHTML = diffHtml;
+
+        // Reset to fixed tab
+        switchTab('fixed');
     }
+
     function hideResult() { document.getElementById('resultPanel').style.display = 'none'; }
+
     function showRateLimit(remaining) {
         const el = document.getElementById('rateLimitInfo');
         document.getElementById('rateLimitText').textContent = remaining === 0
-            ? 'No requests remaining today.'
+            ? 'No requests remaining today. Use your own API key for unlimited access.'
             : remaining + ' request' + (remaining > 1 ? 's' : '') + ' remaining today.';
         el.className = 'rate-badge ' + (remaining === 0 ? 'warn' : 'info');
         el.style.display = 'flex';
     }
+
     function clearForm() {
         codeEl.value = ''; errorEl.value = '';
         document.getElementById('codeCount').textContent = '0';
         document.getElementById('errorCount').textContent = '0';
         hideResult(); hideError(); hideRedebug();
         document.getElementById('rateLimitInfo').style.display = 'none';
+        document.querySelectorAll('.example-chip').forEach(c => c.classList.remove('active'));
     }
+
     function copyToClipboard() {
         navigator.clipboard.writeText(document.getElementById('fixedCode').textContent).then(() => {
             const btn = document.getElementById('copyBtn');
@@ -349,10 +573,12 @@
             setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
         });
     }
+
     function downloadCode() {
         const blob = new Blob([document.getElementById('fixedCode').textContent], { type: 'text/x-python' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'fixed_code.py'; a.click();
     }
+
     function showRedebug() { document.getElementById('redebugPanel').style.display = 'block'; }
     function hideRedebug() { document.getElementById('redebugPanel').style.display = 'none'; }
 
@@ -369,12 +595,13 @@
                     generated_code: document.getElementById('fixedCode').textContent,
                     new_error: newError,
                     original_code: codeEl.value,
-                    original_error: errorEl.value
+                    original_error: errorEl.value,
+                    ...getByokPayload()
                 })
             });
             const data = await res.json();
             if (data.success) {
-                showResult(data.fixed_code);
+                showResult(data.fixed_code, data.explanation, data.generated_code, data.model_used);
                 hideRedebug();
                 document.getElementById('newErrorMessage').value = '';
                 if (data.remaining_requests !== undefined) showRateLimit(data.remaining_requests);
